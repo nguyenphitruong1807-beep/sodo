@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SeatMap Configurator | Sân khấu Cần Thơ</title>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    :root{
+      --bg:#f6f4ef;
+      --paper:#fffaf1;
+      --paper2:#ffffff;
+      --ink:#201811;
+      --muted:#776b5e;
+      --line:#eadcc6;
+      --brand:#9d0d14;
+      --brand2:#c9953b;
+      --radius:20px;
+      --seat:25px;
+      --seatGap:4px;
+      /* Biến màu động sẽ được JS cập nhật */
+      --zone1: #7394c4;
+      --zone2: #4350d8;
+      --zone3: #7453ee;
+      --zone4: #f4e500;
+      --zone5: #b0001c;
+      --balcony: #0e6ba8;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:radial-gradient(circle at top left, rgba(201,149,59,.12), transparent 40%), var(--bg);
+      color:var(--ink);
+    }
+    
+    button,input{font:inherit}
+    button{cursor:pointer;border:0}
+    .app-shell{max-width:1720px;margin:0 auto;padding:18px}
+    
+    /* Header */
+    .topbar{
+      background:rgba(255,255,255,.8); backdrop-filter:blur(16px);
+      border:1px solid rgba(234,220,198,.8); border-radius:var(--radius);
+      padding:14px 22px; margin-bottom:18px;
+      display:flex; align-items:center; justify-content:space-between; box-shadow:0 10px 30px rgba(0,0,0,.03);
+    }
+    .brand{display:flex;align-items:center;gap:14px}
+    
+    .logo{
+      width:48px;height:48px;border-radius:14px;
+      background:linear-gradient(135deg,var(--brand),var(--brand2));
+      display:grid;place-items:center;color:#fff;font-weight:900;font-size:20px;box-shadow:0 8px 20px rgba(157,13,20,.2)
+    }
+    h1{font-size:20px;margin:0;font-weight:900;letter-spacing:-.02em}
+    .subtitle{font-size:13px;color:var(--muted);margin-top:2px;font-weight:500}
+    
+    /* Grid Layout */
+    .main-grid{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:18px;align-items:start}
+    .panel{
+      background:rgba(255,250,241,.9);border:1px solid rgba(234,220,198,.9);border-radius:var(--radius);box-shadow:0 18px 50px rgba(43,31,18,.06);overflow:hidden
+    }
+    
+    .panel-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#fff}
+    .panel-title{font-weight:900;font-size:16px;}
+    .panel-body{padding:22px}
+    
+    /* Buttons */
+    .btn{
+      border-radius:12px;padding:10px 16px;font-weight:800;font-size:13px;background:#fff;color:var(--ink);border:1px solid var(--line);
+      box-shadow:0 4px 12px rgba(43,31,18,.04);display:inline-flex;align-items:center;justify-content:center;gap:8px; transition:0.2s ease;
+    }
+    .btn:hover{transform:translateY(-2px); box-shadow:0 6px 16px rgba(43,31,18,.08);}
+    
+    .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+    .btn.gold{background:linear-gradient(135deg,var(--brand),#d93934);color:#fff;border:0;box-shadow:0 8px 20px rgba(157,13,20,.25)}
+    .btn.ghost{background:transparent;box-shadow:none;border-color:transparent;color:var(--muted)}
+    .btn.ghost:hover{background:rgba(0,0,0,.04);color:var(--ink)}
+    .btn.full{width:100%}
+    .btn:disabled{opacity:.5;cursor:not-allowed;pointer-events:none}
+    
+    .floor-switch{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .zoom-ctrl{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);padding:6px 12px;border-radius:99px;font-size:13px;font-weight:700}
+    
+    .zoom-ctrl input{width:100px;accent-color:var(--ink)}
+
+    /* Marquee Selection Box */
+    .marquee-box{position:fixed;border:2px solid var(--brand);background:rgba(157,13,20,.1);pointer-events:none;display:none;z-index:999;border-radius:6px}
+
+    /* Map Canvas */
+    .map-wrap{
+      overflow:auto;border-radius:16px;background:linear-gradient(#fff,#fffaf0);border:1px solid var(--line);padding:30px;
+      min-height:650px; position:relative; user-select:none; cursor:crosshair;
+    }
+    .map-canvas{min-width:1110px;margin:auto;transform-origin:top left;transition:.2s ease}
+    
+    .venue-label{display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--brand);letter-spacing:.04em;margin:8px 0}
+    .tech-room{width:430px;margin:0 auto 10px;border:4px solid #101010;border-top:0;border-radius:0 0 22px 22px;text-align:center;padding:8px 0;color:#b58522;font-weight:900;background:#fff}
+    .entry{height:300px;background:linear-gradient(135deg,#a6040b,#d11d20);border:4px solid #d9ac42;border-radius:2px;color:rgba(255,255,255,.5);display:grid;place-items:center;font-size:26px;font-weight:900;text-align:center}
+    .stage{height:84px;margin-top:16px;display:grid;place-items:center;color:var(--brand);font-weight:900;font-size:24px;letter-spacing:.02em;background:linear-gradient(180deg,#ffbd76,#f1a356);clip-path:polygon(11% 0,89% 0,100% 100%,0 100%);border-bottom:12px solid #5a2a19}
+    
+    .aisle{background:linear-gradient(90deg,#b70410,#ca0b16,#b70410);border-left:2px solid #d9ac42;border-right:2px solid #d9ac42;min-height:30px}
+    .horizontal-aisle{height:35px;background:linear-gradient(180deg,#b70410,#c50a15);border-top:2px solid #d9ac42;border-bottom:2px solid #d9ac42;margin:12px 0}
+    .lower-layout{display:grid;grid-template-columns:1fr 126px 1fr;gap:12px;align-items:start;grid-template-areas:"topL entry topR" "midL aisle midR" "frontArea frontArea frontArea" "tables tables tables" "stage stage stage"}
+    .topL{grid-area:topL}.topR{grid-area:topR}.midL{grid-area:midL}.midR{grid-area:midR}.centerEntry{grid-area:entry}.centerAisle{grid-area:aisle}.frontArea{grid-area:frontArea}.tablesArea{grid-area:tables}.stageArea{grid-area:stage}
+    .frontArea{display:grid;grid-template-columns:1fr 1.9fr 1fr;gap:68px;align-items:start;margin-top:4px}
+    
+    .tablesArea{display:flex;justify-content:space-around;gap:18px;margin-top:14px;align-items:end;background:linear-gradient(180deg,transparent 0 30%,#af0611 30% 100%);padding:22px 10px 16px;border-bottom:2px solid #d9ac42}
+    .table-block{min-width:92px;background:linear-gradient(180deg,#9b5b29,#6c381b);border:2px solid #8a4c25;border-radius:8px 8px 3px 3px;box-shadow:inset 0 -12px 0 rgba(0,0,0,.14),0 6px 10px rgba(0,0,0,.16);padding:8px;display:flex;gap:4px;justify-content:center}
+    .upper-layout{display:grid;grid-template-columns:1fr 110px 1fr;gap:72px;align-items:end;grid-template-areas:"upperL count upperR" "rail rail rail" "stage stage stage"}
+    .upperL{grid-area:upperL}.upperR{grid-area:upperR}.upperCount{grid-area:count;color:#aeb7c5;font-size:28px;font-weight:900;align-self:center;text-align:center}.rail{grid-area:rail;height:65px;background:repeating-linear-gradient(90deg,#c9935c 0 18px,#ebc397 18px 28px,#a96b3f 28px 31px);border-top:10px solid #4d4d4d;border-bottom:1px solid #b67d53;position:relative}.rail:after{content:'◷';position:absolute;left:50%;top:50%;translate:-50% -50%;font-size:39px;color:#3e6fa9;text-shadow:0 1px 2px #fff}.upperStage{grid-area:stage;height:80px;margin-top:650px}
+    
+    .seat-section{background:rgba(255,255,255,.5);border-radius:12px;padding:8px;position:relative;border:1px solid rgba(0,0,0,.04)}
+    .section-name{font-size:11px;font-weight:900;color:#b88737;margin-bottom:6px;text-transform:uppercase;display:flex;justify-content:space-between;gap:6px}
+    .seat-grid{display:grid;gap:var(--seatGap);align-items:center;justify-content:center}
+    
+    .seat{
+      width:var(--seat);height:var(--seat);border-radius:7px 7px 4px 4px;color:#fff;font-size:9px;font-weight:800;
+      display:flex;align-items:center;justify-content:center;position:relative;outline:2px solid rgba(255,255,255,.75);
+      box-shadow:inset 0 -4px 0 rgba(0,0,0,.15),0 1px 2px rgba(0,0,0,.1);transition:.1s ease;user-select:none;
+    }
+    
+    .seat:before{content:'';position:absolute;left:4px;right:4px;top:4px;height:3px;border-radius:99px;background:rgba(255,255,255,.3)}
+    .seat:hover{transform:translateY(-2px) scale(1.08);filter:brightness(1.1);z-index:2;cursor:pointer}
+    .seat.selected{outline:4px solid #111; outline-offset:0px; filter:brightness(1.15); transform:scale(1.08); z-index:3}
+    .seat.selected:after{content:'✓';position:absolute;color:#fff;text-shadow:0 1px 2px #000;font-size:14px}
+    
+    .seat.text-dark{color:#1a130b; outline-color:rgba(0,0,0,.2); box-shadow:inset 0 -4px 0 rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.1);}
+    .seat.text-dark:before{background:rgba(255,255,255,.5)}
+    .seat.text-dark.selected:after{color:#111;text-shadow:0 1px 0 #fff;}
+    
+    .seat.zone1{background:var(--zone1)}.seat.zone2{background:var(--zone2)}.seat.zone3{background:var(--zone3)}.seat.zone4{background:var(--zone4)}.seat.zone5{background:var(--zone5)}.seat.balcony{background:var(--balcony)}
+    .seat.vip:after{content:'';position:absolute;right:-1px;top:-1px;width:7px;height:7px;border-radius:99px;background:#ffd86b;border:1px solid #7a5200}
+    .seat.vip.selected:after{display:none} /* Hide vip dot when selected to show checkmark */
+    
+    .seat.blank{visibility:hidden;pointer-events:none;background:transparent;outline:0;box-shadow:none}
+    .row-label{color:#b98736;font-weight:900;font-size:11px;display:flex;align-items:center;justify-content:center}
+
+    /* Sidebar Components */
+    .side-panel{position:sticky;top:18px;max-height:calc(100vh - 36px);overflow-y:auto;display:flex;flex-direction:column}
+    .section-title{font-weight:900;font-size:15px;color:var(--brand);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+    .mini-note{font-size:12px;color:var(--muted);line-height:1.5}
+    
+    .sel-box{background:#fff;border:1px dashed var(--brand2);border-radius:14px;padding:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+    .sel-box strong{font-size:14px}
+    .badge{background:#fff7df;border:1px solid #e6bf67;border-radius:99px;padding:6px 12px;font-size:13px;font-weight:900;color:#6b4300}
+
+    .paint-colors{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+    .paint-btn{padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.1);font-weight:800;font-size:12px;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.05);transition:0.2s;}
+    .paint-btn:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(0,0,0,.15);filter:brightness(1.05)}
+    .paint-btn.full{grid-column:1/-1}
+
+    hr{border:0;border-top:1px dashed var(--line);margin:20px 0}
+    
+    .form-group{margin-bottom:12px}
+    .form-group label{display:block;font-size:12px;font-weight:800;color:#5c4d3f;margin-bottom:6px}
+    input[type="text"]{width:100%;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 12px;font-size:14px;outline:none;transition:0.2s}
+    input[type="text"]:focus{border-color:var(--brand2);box-shadow:0 0 0 3px rgba(201,149,59,.15)}
+    
+    .zone-config-list{display:flex;flex-direction:column;gap:8px;background:#fff;padding:12px;border-radius:14px;border:1px solid var(--line)}
+    .zone-config-item{display:flex;align-items:center;gap:8px}
+    input[type="color"]{width:36px;height:36px;padding:0;border:0;border-radius:8px;cursor:pointer;background:transparent}
+    input[type="color"]::-webkit-color-swatch-wrapper{padding:0}
+    input[type="color"]::-webkit-color-swatch{border:1px solid rgba(0,0,0,.15);border-radius:8px}
+
+    /* Legends */
+    .legend{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:13px;font-weight:600;margin-bottom:14px;background:#fff;padding:12px 18px;border-radius:14px;border:1px solid var(--line)}
+    .legend-item{display:inline-flex;align-items:center;gap:6px}
+    .dot{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid rgba(0,0,0,.15)}
+
+    /* Export Styles */
+    .map-export-host{position:fixed;left:-10000px;top:0;z-index:-1;background:#fffaf1;padding:0;pointer-events:none}
+    .map-export-sheet{width:max-content;background:#fffaf1;color:var(--ink);font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;padding:36px;border:1px solid var(--line)}
+    .map-export-title{display:flex;align-items:flex-end;justify-content:space-between;gap:28px;margin-bottom:18px;color:var(--brand);font-weight:950;letter-spacing:.02em;font-size:32px; border-bottom:2px solid var(--line); padding-bottom:18px}
+    .map-export-title small{display:block;color:var(--muted);font-size:15px;font-weight:800;margin-top:6px;letter-spacing:0}
+    .export-legend{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:24px;font-size:15px;font-weight:700}
+    .export-legend .dot{width:18px;height:18px;border-radius:5px}
+    .map-export-sheet .map-canvas{transform:none!important;width:auto!important;margin:0}
+    .map-export-sheet .seat.selected{outline:2px solid rgba(255,255,255,.75); outline-offset:0; transform:none; filter:none}
+    .map-export-sheet .seat.selected:after{display:none}
+
+    .toast{position:fixed;right:22px;bottom:22px;background:var(--ink);color:#fff;border-radius:14px;padding:14px 20px;box-shadow:0 16px 40px rgba(0,0,0,.25);z-index:100;opacity:0;translate:0 15px;transition:.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);font-weight:700}
+    .toast.show{opacity:1;translate:0 0}
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">CT</div>
+        <div>
+          <h1>Công cụ Cấu hình Sơ đồ</h1>
+          <div class="subtitle">Quét khối chọn ghế • Tô màu phân khu • Xuất ảnh 4K nét căng</div>
+        </div>
+      </div>
+      <div style="display:flex; gap: 8px;">
+        <label class="btn ghost" style="cursor:pointer" title="Khôi phục sơ đồ từ file .json">
+          📂 Mở file
+          <input type="file" id="importFile" accept=".json" style="display:none">
+        </label>
+        <button class="btn ghost" id="exportFileBtn" title="Tải cấu hình hiện tại về máy tính">📥 Tải Backup</button>
+        <button class="btn primary" id="saveForceBtn" title="Lưu vào bộ nhớ trình duyệt">💾 Lưu tạm</button>
+      </div>
+    </header>
+
+    <main class="main-grid">
+      <!-- Left Map Panel -->
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title" id="floorTitle">Tầng dưới — 880 ghế</div>
+          <div class="floor-switch">
+            <button class="btn primary" id="btnLower">Tầng dưới (880)</button>
+            <button class="btn ghost" id="btnUpper">Tầng trên (278)</button>
+            <div class="zoom-ctrl">Zoom <input id="zoomRange" type="range" min="60" max="115" value="88" /></div>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="legend" id="mainLegend">
+             <!-- Legend injected here -->
+          </div>
+          <div class="map-wrap" id="mapWrap">
+            <div class="map-canvas" id="mapCanvas"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Sidebar Panel -->
+      <aside class="panel side-panel">
+        <div class="panel-body" style="padding-top:16px">
+          
+          <div class="section-title">1. Quét khối & Phân khu</div>
+          <p class="mini-note mb-2">Nhấn giữ chuột trái và <strong>kéo trên sơ đồ để bôi đen</strong> nhiều ghế cùng lúc, sau đó bấm nút màu dưới đây để gán khu vực.</p>
+          
+          <div class="sel-box">
+            <strong>Ghế đang chọn:</strong> <span id="selCount" class="badge">0 ghế</span>
+          </div>
+          
+          <div class="paint-colors" id="paintColors">
+             <!-- Buttons injected here -->
+          </div>
+          <button class="btn ghost full" id="clearSelBtn" style="margin-top:4px">Bỏ chọn lưới</button>
+
+          <hr>
+
+          <div class="section-title">2. Xuất ảnh sơ đồ (Chuẩn 4K)</div>
+          <p class="mini-note mb-2">Hệ thống sẽ tự động chụp lại hình ảnh sơ đồ với độ phân giải siêu nét (Dùng để in ấn).</p>
+          <div style="display:flex; flex-direction:column; gap:8px">
+            <button class="btn primary full" id="dlBothBtn" style="padding:14px; font-size:14px">🔥 TẢI 1 LƯỢT CẢ 2 TẦNG</button>
+            <div style="display:flex; gap:8px">
+              <button class="btn full" id="dlLowerBtn" style="background:#f1f1f1">Tải Tầng dưới</button>
+              <button class="btn full" id="dlUpperBtn" style="background:#f1f1f1">Tải Tầng trên</button>
+            </div>
+          </div>
+
+          <hr>
+
+          <div class="section-title">3. Tùy chỉnh Tên & Màu sắc</div>
+          <div class="form-group">
+            <label>Tiêu đề in trên Sơ đồ xuất ra</label>
+            <input id="eventNameInput" type="text" placeholder="VD: Sơ đồ giá vé - Đêm diễn Cần Thơ" />
+          </div>
+          
+          <label style="display:block;font-size:12px;font-weight:800;color:#5c4d3f;margin:12px 0 6px">Bảng màu các Hạng vé / Khu vực</label>
+          <div class="zone-config-list" id="zoneConfigs">
+            <!-- Inputs injected here -->
+          </div>
+          
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button class="btn full" id="resetColorsBtn" style="background:#ffecec; color:var(--brand)">Khôi phục tên & màu gốc</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const LS_KEY = 'ct-seatmap-configurator-v2';
+  const pad = n => String(n).padStart(2,'0');
+  const escapeHtml = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+
+  // Contrast calculation to auto-switch text color on seats
+  function getContrastYIQ(hexcolor){
+    hexcolor = String(hexcolor).replace("#", "");
+    if(hexcolor.length === 3) hexcolor = hexcolor.split('').map(c => c+c).join('');
+    const r = parseInt(hexcolor.substr(0,2),16);
+    const g = parseInt(hexcolor.substr(2,2),16);
+    const b = parseInt(hexcolor.substr(4,2),16);
+    return ((r*299)+(g*587)+(b*114))/1000 >= 140 ? 'dark' : 'light';
+  }
+
+  const ZONE_KEYS = ['zone1', 'zone2', 'zone3', 'zone4', 'zone5', 'balcony'];
+  
+  const defaultState = () => ({
+    eventName: 'Sơ đồ Giá vé - Sân khấu Cần Thơ',
+    zones: {
+      zone1: { name: 'Khu 1 — Sau ngoài', color: '#7394c4' },
+      zone2: { name: 'Khu 2 — Sau trong / Cánh ngoài', color: '#4350d8' },
+      zone3: { name: 'Khu 3 — Giữa ngoài', color: '#7453ee' },
+      zone4: { name: 'Khu 4 — Giữa trong / Cánh trong', color: '#f4e500' },
+      zone5: { name: 'Khu 5 — Trung tâm / Sát sân khấu', color: '#b0001c' },
+      balcony: { name: 'Tầng trên / Ban công', color: '#0e6ba8' }
+    },
+    customSeatZones: {} // seatId -> zoneKey
+  });
+
+  let state = loadState();
+  let selected = new Set();
+  let currentFloor = 'lower';
+
+  // Sơ đồ ghế cứng (Tọa độ)
+  const seatId = (floor,row,no) => `${floor==='lower'?'T1':'T2'}-${row}${pad(no)}`;
+  const makeRows = (labels,start,end) => labels.map(row=>({row,start,end}));
+
+  const backLeftRows = [{row:'Z',start:3,end:17}, ...makeRows(['Y','X','W','V','U','T','S','R','Q'],1,17)];
+  const backRightRows = [{row:'Z',start:18,end:32}, ...makeRows(['Y','X','W','V','U','T','S','R','Q'],18,34)];
+  const midLeftRows = makeRows(['N','M','L','K','J','I','H'],1,20);
+  const midRightRows = makeRows(['N','M','L','K','J','I','H'],21,40);
+  const frontLeftRows = makeRows(['G','F','E','D','C','B'],1,11);
+  const frontCenterRows = makeRows(['G','F','E','D','C','B'],12,28);
+  const frontRightRows = makeRows(['G','F','E','D','C','B'],29,39);
+  const upperLeftRows = [{row:'AG',start:2,end:20}, ...makeRows(['AF','AE','AD','AC','AB','AA'],1,20)];
+  const upperRightRows = [{row:'AG',start:21,end:39}, ...makeRows(['AF','AE','AD','AC','AB','AA'],21,40)];
+
+  const SECTIONS = [
+    {floor:'lower', code:'BL', name:'Trái sau Q-Z', cls:'topL', customRows:backLeftRows},
+    {floor:'lower', code:'BR', name:'Phải sau Q-Z', cls:'topR', customRows:backRightRows},
+    {floor:'lower', code:'ML', name:'Trái giữa H-N', cls:'midL', customRows:midLeftRows},
+    {floor:'lower', code:'MR', name:'Phải giữa H-N', cls:'midR', customRows:midRightRows},
+    {floor:'lower', code:'FL', name:'Trước trái B-G', cls:'frontL', customRows:frontLeftRows},
+    {floor:'lower', code:'FC', name:'Trước giữa B-G', cls:'frontC', customRows:frontCenterRows},
+    {floor:'lower', code:'FR', name:'Trước phải B-G', cls:'frontR', customRows:frontRightRows},
+    {floor:'lower', code:'A1', name:'Bàn A1-A5', cls:'tableA', customRows:[{row:'A',start:1,end:5}], category:'table'},
+    {floor:'lower', code:'A2', name:'Bàn A6-A9', cls:'tableA', customRows:[{row:'A',start:6,end:9}], category:'table'},
+    {floor:'lower', code:'A3', name:'Bàn A10-A13', cls:'tableA', customRows:[{row:'A',start:10,end:13}], category:'table'},
+    {floor:'lower', code:'A4', name:'Bàn A14-A15', cls:'tableA', customRows:[{row:'A',start:14,end:15}], category:'table'},
+    {floor:'lower', code:'A5', name:'Bàn A16-A17', cls:'tableA', customRows:[{row:'A',start:16,end:17}], category:'table'},
+    {floor:'lower', code:'A6', name:'Bàn A18-A21', cls:'tableA', customRows:[{row:'A',start:18,end:21}], category:'table'},
+    {floor:'lower', code:'A7', name:'Bàn A22-A25', cls:'tableA', customRows:[{row:'A',start:22,end:25}], category:'table'},
+    {floor:'lower', code:'A8', name:'Bàn A26-A30', cls:'tableA', customRows:[{row:'A',start:26,end:30}], category:'table'},
+    {floor:'upper', code:'UL', name:'Trái AA-AG', cls:'upperL', customRows:upperLeftRows},
+    {floor:'upper', code:'UR', name:'Phải AA-AG', cls:'upperR', customRows:upperRightRows},
+  ];
+
+  const seatTemplates = [];
+  for(const s of SECTIONS){
+    for(const rd of s.customRows){
+      for(let no=rd.start; no<=rd.end; no++){
+        seatTemplates.push({id: seatId(s.floor, rd.row, no), floor:s.floor, section:s.code, sectionName:s.name, row:rd.row, no, category:s.category});
+      }
+    }
+  }
+  const seatById = Object.fromEntries(seatTemplates.map(s=>[s.id,s]));
+
+  function loadState(){
+    try{
+      const saved = JSON.parse(localStorage.getItem(LS_KEY));
+      if(!saved) return defaultState();
+      const ds = defaultState();
+      return {
+        eventName: saved.eventName || ds.eventName,
+        zones: { ...ds.zones, ...(saved.zones||{}) },
+        customSeatZones: saved.customSeatZones || {}
+      };
+    }catch(e){ return defaultState(); }
+  }
+  function saveState(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  
+  function toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),3000);
+  }
+
+  // --- UI RENDERING ---
+  const els = {
+    mapCanvas: document.getElementById('mapCanvas'), mapWrap: document.getElementById('mapWrap'),
+    btnLower: document.getElementById('btnLower'), btnUpper: document.getElementById('btnUpper'),
+    floorTitle: document.getElementById('floorTitle'), zoomRange: document.getElementById('zoomRange'),
+    mainLegend: document.getElementById('mainLegend'), paintColors: document.getElementById('paintColors'),
+    zoneConfigs: document.getElementById('zoneConfigs'), selCount: document.getElementById('selCount'),
+    eventNameInput: document.getElementById('eventNameInput'), clearSelBtn: document.getElementById('clearSelBtn')
+  };
+
+  function applyZoneStyles(){
+    const root = document.documentElement;
+    ZONE_KEYS.forEach(key => root.style.setProperty(`--${key}`, state.zones[key].color));
+  }
+
+  function renderSidebar(){
+    // Render config inputs
+    els.eventNameInput.value = state.eventName;
+    els.zoneConfigs.innerHTML = ZONE_KEYS.map(key => {
+      const z = state.zones[key];
+      return `
+        <div class="zone-config-item">
+          <input type="color" class="color-picker" data-key="${key}" value="${z.color}" title="Đổi màu ${z.name}" />
+          <input type="text" class="zone-name-input" data-key="${key}" value="${escapeHtml(z.name)}" placeholder="Nhập tên khu..." />
+        </div>`;
+    }).join('');
+
+    // Bind config events
+    els.zoneConfigs.querySelectorAll('.color-picker').forEach(el => {
+      el.addEventListener('input', e => { state.zones[e.target.dataset.key].color = e.target.value; applyZoneStyles(); });
+      el.addEventListener('change', () => { renderMap(); renderLegend(); renderPaintButtons(); saveState(); });
+    });
+    els.zoneConfigs.querySelectorAll('.zone-name-input').forEach(el => {
+      el.addEventListener('change', e => { state.zones[e.target.dataset.key].name = e.target.value; renderLegend(); renderPaintButtons(); saveState(); });
+    });
+  }
+
+  function renderPaintButtons(){
+    els.paintColors.innerHTML = ZONE_KEYS.map(key => {
+      const z = state.zones[key];
+      const textCls = getContrastYIQ(z.color) === 'dark' ? 'color:#1a130b' : 'color:#fff';
+      return `<button class="paint-btn" data-zone="${key}" style="background:${z.color}; ${textCls}">${escapeHtml(z.name)}</button>`;
+    }).join('') + `<button class="paint-btn full" data-zone="reset" style="background:#e5e7eb; color:#374151">Tự động trả về Mặc định</button>`;
+  }
+
+  function renderLegend(){
+    els.mainLegend.innerHTML = `<strong>Bảng màu:</strong> ` + ZONE_KEYS.map(key => `<span class="legend-item"><i class="dot" style="background:${state.zones[key].color}"></i>${escapeHtml(state.zones[key].name)}</span>`).join('');
+  }
+
+  function renderSelection(){
+    els.selCount.textContent = `${selected.size} ghế`;
+    els.mapCanvas.querySelectorAll('.seat').forEach(btn => {
+      if(selected.has(btn.dataset.seat)) btn.classList.add('selected');
+      else btn.classList.remove('selected');
+    });
+  }
+
+  // Default mapping logic if no custom override exists
+  function defaultZoneOfSeat(t){
+    if(t.floor === 'upper') return 'balcony';
+    if(t.section === 'BL'){ if(['Q','R','S'].includes(t.row) && t.no >= 8) return 'zone2'; return 'zone1'; }
+    if(t.section === 'BR'){ if(['Q','R','S'].includes(t.row) && t.no <= 26) return 'zone2'; return 'zone1'; }
+    if(t.section === 'ML'){ if(['H','I','J','K','L'].includes(t.row) && t.no >= 12) return 'zone4'; return 'zone3'; }
+    if(t.section === 'MR'){ if(['H','I','J','K','L'].includes(t.row) && t.no <= 29) return 'zone4'; return 'zone3'; }
+    if(t.section === 'FL') return t.no <= 6 ? 'zone2' : 'zone4';
+    if(t.section === 'FC') return 'zone5';
+    if(t.section === 'FR') return t.no >= 35 ? 'zone2' : 'zone4';
+    if(['A1','A2','A3','A6','A7','A8'].includes(t.section)) return 'zone4';
+    if(['A4','A5'].includes(t.section)) return 'zone5';
+    if(['BL','BR'].includes(t.section)) return 'zone1';
+    if(['ML','MR'].includes(t.section)) return 'zone3';
+    return 'zone1';
+  }
+
+  function sectionHtml(s){
+    const minNo = Math.min(...s.customRows.map(r=>r.start));
+    const maxNo = Math.max(...s.customRows.map(r=>r.end));
+    const maxCols = maxNo - minNo + 1;
+    let html = `<div class="seat-section ${s.cls}"><div class="section-name"><span>${s.name}</span></div>`;
+    html += `<div class="seat-grid" style="grid-template-columns: 24px repeat(${maxCols}, var(--seat));">`;
+    for(const rd of s.customRows){
+      html += `<div class="row-label">${rd.row}</div>`;
+      for(let no=minNo; no<=maxNo; no++){
+        if(no < rd.start || no > rd.end) html += `<div class="seat blank"></div>`;
+        else {
+          const id = seatId(s.floor, rd.row, no);
+          const t = seatById[id];
+          const zKey = state.customSeatZones[id] || defaultZoneOfSeat(t);
+          const textColorClass = getContrastYIQ(state.zones[zKey].color) === 'dark' ? 'text-dark' : '';
+          const cls = ['seat', zKey, textColorClass, selected.has(id)?'selected':'', t.category==='table'?'vip':''].filter(Boolean).join(' ');
+          const title = `${t.id} • ${state.zones[zKey].name}`;
+          html += `<button class="${cls}" data-seat="${id}" title="${escapeHtml(title)}">${t.no}</button>`;
+        }
+      }
+    }
+    html += `</div></div>`;
+    return html;
+  }
+
+  function tableGroupHtml(s, idx){
+    const rd = s.customRows[0];
+    let html = `<div class="table-wrap"><div class="table-block">`;
+    for(let no=rd.start; no<=rd.end; no++){
+      const id = seatId(s.floor, rd.row, no), t = seatById[id];
+      const zKey = state.customSeatZones[id] || defaultZoneOfSeat(t);
+      const textColorClass = getContrastYIQ(state.zones[zKey].color) === 'dark' ? 'text-dark' : '';
+      const cls = ['seat', zKey, textColorClass, selected.has(id)?'selected':'', 'vip'].filter(Boolean).join(' ');
+      html += `<button class="${cls}" data-seat="${id}" title="${t.id} • ${state.zones[zKey].name}">${t.no}</button>`;
+    }
+    html += `</div></div>`;
+    return html;
+  }
+
+  function renderMap(){
+    const scale = Number(els.zoomRange.value)/100;
+    els.mapCanvas.style.transform = `scale(${scale})`;
+    els.mapCanvas.style.width = `${100/scale}%`;
+    
+    if(currentFloor==='lower'){
+      const sec = Object.fromEntries(SECTIONS.filter(s=>s.floor==='lower').map(s=>[s.code,s]));
+      els.mapCanvas.innerHTML = `
+        <div class="tech-room">PHÒNG KỸ THUẬT</div><div class="venue-label">LỐI VÀO</div>
+        <div class="lower-layout">
+          ${sectionHtml(sec.BL)}<div class="centerEntry entry"><div>880 ghế<br><small style="font-size:14px;opacity:.65">Lối vào trung tâm</small></div></div>${sectionHtml(sec.BR)}
+          ${sectionHtml(sec.ML)}<div class="centerAisle aisle"></div>${sectionHtml(sec.MR)}
+          <div class="frontArea"><div>${sectionHtml(sec.FL)}</div><div>${sectionHtml(sec.FC)}</div><div>${sectionHtml(sec.FR)}</div></div>
+          <div class="tablesArea"><div class="row-label">A</div>${['A1','A2','A3','A4','A5','A6','A7','A8'].map((c,i)=>tableGroupHtml(sec[c],i)).join('')}</div>
+          <div class="stage stageArea">SÂN KHẤU</div>
+        </div>`;
+    }else{
+      const sec = Object.fromEntries(SECTIONS.filter(s=>s.floor==='upper').map(s=>[s.code,s]));
+      els.mapCanvas.innerHTML = `<div class="upper-layout">${sectionHtml(sec.UL)}<div class="upperCount">278 ghế</div>${sectionHtml(sec.UR)}<div class="rail"></div><div class="stage upperStage">SÂN KHẤU</div></div>`;
+    }
+    
+    els.btnLower.className = currentFloor === 'lower' ? 'btn primary' : 'btn ghost';
+    els.btnUpper.className = currentFloor === 'upper' ? 'btn primary' : 'btn ghost';
+    els.floorTitle.textContent = currentFloor === 'lower' ? 'Tầng dưới — 880 ghế' : 'Tầng trên — 278 ghế';
+
+    els.mapCanvas.querySelectorAll('[data-seat]').forEach(btn=>btn.addEventListener('click', e => {
+      if(suppressClick) return; // Ignore click if just finished dragging
+      const id = btn.dataset.seat;
+      selected.has(id) ? selected.delete(id) : selected.add(id);
+      renderSelection();
+    }));
+  }
+
+  // --- MARQUEE SELECTION ---
+  let isMarquee = false, startX = 0, startY = 0, suppressClick = false;
+  const marqueeBox = document.createElement('div');
+  marqueeBox.className = 'marquee-box';
+  document.body.appendChild(marqueeBox);
+
+  els.mapWrap.addEventListener('mousedown', e => {
+    if(e.button !== 0 || e.target === els.zoomRange) return;
+    if(e.target === els.mapWrap && (e.offsetX > els.mapWrap.clientWidth || e.offsetY > els.mapWrap.clientHeight)) return; // Scrollbar check
+    
+    startX = e.clientX; startY = e.clientY; isMarquee = true;
+    marqueeBox.style.cssText = `display:block; left:${startX}px; top:${startY}px; width:0; height:0`;
+  });
+
+  window.addEventListener('mousemove', e => {
+    if(!isMarquee) return;
+    e.preventDefault();
+    marqueeBox.style.left = Math.min(startX, e.clientX) + 'px';
+    marqueeBox.style.top = Math.min(startY, e.clientY) + 'px';
+    marqueeBox.style.width = Math.abs(startX - e.clientX) + 'px';
+    marqueeBox.style.height = Math.abs(startY - e.clientY) + 'px';
+  });
+
+  window.addEventListener('mouseup', e => {
+    if(!isMarquee) return;
+    isMarquee = false; marqueeBox.style.display = 'none';
+    
+    const w = Math.abs(startX - e.clientX), h = Math.abs(startY - e.clientY);
+    if(w >= 5 || h >= 5) {
+      suppressClick = true; setTimeout(() => suppressClick = false, 50);
+      
+      const rect = { left: Math.min(startX, e.clientX), right: Math.max(startX, e.clientX), top: Math.min(startY, e.clientY), bottom: Math.max(startY, e.clientY) };
+      let added = 0, removed = 0, action = 'add', isFirst = true;
+
+      els.mapCanvas.querySelectorAll('.seat:not(.blank)').forEach(btn => {
+        const bRect = btn.getBoundingClientRect();
+        if(!(bRect.right < rect.left || bRect.left > rect.right || bRect.bottom < rect.top || bRect.top > rect.bottom)) {
+          const id = btn.dataset.seat;
+          if(isFirst) { action = selected.has(id) ? 'remove' : 'add'; isFirst = false; }
+          if(action === 'add' && !selected.has(id)) { selected.add(id); added++; }
+          else if(action === 'remove' && selected.has(id)) { selected.delete(id); removed++; }
+        }
+      });
+      if(added || removed) {
+        renderSelection();
+        toast(added > 0 ? `Đã bôi đen ${added} ghế.` : `Đã bỏ bôi đen ${removed} ghế.`);
+      }
+    }
+  });
+
+  // --- PAINT ZONES ---
+  els.paintColors.addEventListener('click', e => {
+    const btn = e.target.closest('.paint-btn');
+    if(!btn) return;
+    if(selected.size === 0) return toast('⚠️ Hãy chọn (click hoặc kéo chuột quét khối) ít nhất 1 ghế trên sơ đồ trước!');
+    
+    const tZone = btn.dataset.zone;
+    for(const id of selected) {
+      if(tZone === 'reset') delete state.customSeatZones[id];
+      else state.customSeatZones[id] = tZone;
+    }
+    saveState(); selected.clear(); renderMap(); renderSelection();
+    toast(`✅ Đã tô màu ${tZone === 'reset' ? 'mặc định' : state.zones[tZone].name} cho các ghế vừa chọn.`);
+  });
+
+  // --- EXPORT 4K ---
+  function buildExportSheet(floor){
+    const sheet = document.createElement('div');
+    sheet.className = 'map-export-sheet';
+    
+    const title = document.createElement('div');
+    title.className = 'map-export-title';
+    title.innerHTML = `<div>${escapeHtml(state.eventName)}<small>SƠ ĐỒ TẦNG ${floor==='lower'?'DƯỚI (880 GHẾ)':'TRÊN (278 GHẾ)'}</small></div><small style="text-align:right">Cập nhật: ${new Date().toLocaleDateString('vi-VN')}<br>Bản đồ xuất từ hệ thống</small>`;
+    
+    const legend = document.createElement('div');
+    legend.className = 'export-legend';
+    legend.innerHTML = ZONE_KEYS.map(key => `<span class="legend-item"><i class="dot" style="background:${state.zones[key].color}"></i>${escapeHtml(state.zones[key].name)}</span>`).join('');
+
+    const clonedMap = els.mapCanvas.cloneNode(true);
+    clonedMap.style.transform = 'none'; clonedMap.style.width = 'auto';
+    
+    // Xóa trạng thái đang bôi đen trên ảnh xuất
+    clonedMap.querySelectorAll('.seat').forEach(btn => {
+      const seat = document.createElement('div');
+      seat.className = btn.className;
+      seat.classList.remove('selected'); 
+      seat.textContent = btn.textContent;
+      btn.replaceWith(seat);
+    });
+    
+    sheet.append(title, legend, clonedMap);
+    return sheet;
+  }
+
+  async function capture4K(floorName) {
+    const host = document.createElement('div');
+    host.className = 'map-export-host';
+    const sheet = buildExportSheet(floorName === 'Tang-Duoi' ? 'lower' : 'upper');
+    host.appendChild(sheet);
+    document.body.appendChild(host);
+    
+    const exportWidth = Math.max(sheet.scrollWidth, sheet.getBoundingClientRect().width);
+    const canvas = await html2canvas(sheet, { backgroundColor:'#fffaf1', scale: Math.max(2, Math.min(4, 3840 / exportWidth)), logging:false });
+    host.remove();
+    
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png', 1);
+    const d = new Date();
+    a.download = `So-Do-San-Khau-${floorName}-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.png`;
+    a.click();
+  }
+
+  async function exportBothFloors() {
+    const btn = document.getElementById('dlBothBtn');
+    const oldHtml = btn.innerHTML;
+    btn.innerHTML = '⏳ Đang quét nét Tầng dưới...'; btn.disabled = true;
+    
+    const prevFloor = currentFloor; const prevSel = new Set(selected);
+    selected.clear(); renderSelection(); // Dấu đi các viền đang chọn
+
+    try {
+      currentFloor = 'lower'; renderMap();
+      await new Promise(r => setTimeout(r, 600)); // Chờ trình duyệt vẽ xong HTML
+      await capture4K('Tang-Duoi');
+
+      btn.innerHTML = '⏳ Đang quét nét Tầng trên...';
+      currentFloor = 'upper'; renderMap();
+      await new Promise(r => setTimeout(r, 600));
+      await capture4K('Tang-Tren');
+
+      toast('🎉 Đã tải thành công 2 ảnh sơ đồ siêu nét!');
+    } catch(err) {
+      toast('Lỗi khi tải ảnh.'); console.error(err);
+    } finally {
+      currentFloor = prevFloor; selected = prevSel;
+      renderMap(); renderSelection();
+      btn.innerHTML = oldHtml; btn.disabled = false;
+    }
+  }
+
+  // --- EVENTS BINDING ---
+  els.btnLower.addEventListener('click', () => { currentFloor='lower'; selected.clear(); renderMap(); renderSelection(); });
+  els.btnUpper.addEventListener('click', () => { currentFloor='upper'; selected.clear(); renderMap(); renderSelection(); });
+  els.zoomRange.addEventListener('input', renderMap);
+  els.clearSelBtn.addEventListener('click', () => { selected.clear(); renderSelection(); });
+  els.eventNameInput.addEventListener('change', e => { state.eventName = e.target.value; saveState(); });
+  
+  document.getElementById('dlLowerBtn').addEventListener('click', () => { if(currentFloor!=='lower') els.btnLower.click(); capture4K('Tang-Duoi'); toast('Đã tải Tầng dưới!');});
+  document.getElementById('dlUpperBtn').addEventListener('click', () => { if(currentFloor!=='upper') els.btnUpper.click(); capture4K('Tang-Tren'); toast('Đã tải Tầng trên!');});
+  document.getElementById('dlBothBtn').addEventListener('click', exportBothFloors);
+  
+  document.getElementById('saveForceBtn').addEventListener('click', () => { saveState(); toast('Đã lưu toàn bộ cấu hình vào trình duyệt!'); });
+
+  // Tải file Backup (.json)
+  document.getElementById('exportFileBtn').addEventListener('click', () => {
+    saveState(); // Đảm bảo lưu trạng thái mới nhất trước khi tải
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+    const a = document.createElement('a');
+    a.href = dataStr;
+    const d = new Date();
+    a.download = `Backup-So-Do-San-Khau-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`;
+    a.click();
+    toast('Đã tải xuống file Backup (.json)!');
+  });
+
+  // Mở file Backup (.json)
+  document.getElementById('importFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      try {
+        const imported = JSON.parse(event.target.result);
+        if(imported && imported.zones) {
+          localStorage.setItem(LS_KEY, JSON.stringify(imported));
+          location.reload(); // Tải lại trang để cập nhật giao diện
+        } else {
+          toast('⚠️ File không đúng định dạng sơ đồ!');
+        }
+      } catch(err) {
+        toast('⚠️ Lỗi đọc file!');
+      }
+    };
+    reader.readAsText(file);
+    this.value = ''; // Reset input để có thể chọn lại file cũ nếu cần
+  });
+  
+  // Custom confirm instead of default alert
+  document.getElementById('resetColorsBtn').addEventListener('click', () => {
+    // Basic custom dialog
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:grid;place-items:center';
+    overlay.innerHTML = `
+      <div style="background:#fff;padding:24px;border-radius:20px;max-width:400px;text-align:center">
+        <h3 style="margin-top:0">Xóa dữ liệu</h3>
+        <p>Bạn có chắc chắn khôi phục Tên & Màu sắc về mặc định? Các ghế đã vẽ vẫn sẽ được giữ nguyên.</p>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:20px">
+          <button id="cancelResetBtn" style="padding:10px 20px;border-radius:10px;border:1px solid #ccc;background:#fff">Hủy</button>
+          <button id="okResetBtn" style="padding:10px 20px;border-radius:10px;border:none;background:var(--brand);color:#fff">Đồng ý</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    document.getElementById('cancelResetBtn').onclick = () => overlay.remove();
+    document.getElementById('okResetBtn').onclick = () => {
+      state.zones = defaultState().zones; saveState(); applyZoneStyles(); renderSidebar(); renderPaintButtons(); renderLegend(); renderMap();
+      overlay.remove(); toast('Đã khôi phục tên và màu sắc.');
+    };
+  });
+
+  // Initialize
+  applyZoneStyles(); renderSidebar(); renderPaintButtons(); renderLegend(); renderMap(); renderSelection();
+})();
+</script>
+</body>
+</html>
